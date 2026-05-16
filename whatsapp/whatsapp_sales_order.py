@@ -140,6 +140,31 @@ def send_whatsapp_ping_now(mobile=None, chat_id=None, text=None):
     }
 
 
+@frappe.whitelist()
+def debug_sales_order_recipient(name):
+    """Return resolved recipient details for a Sales Order WhatsApp send."""
+    if not name:
+        frappe.throw("Sales Order name is required")
+
+    doc = frappe.get_doc("Sales Order", name)
+    contact_name, contact_person, mobile = get_customer_contact(doc.customer)
+    normalized_mobile = clean_egypt_mobile(mobile)
+    chat_id = f"{normalized_mobile}@c.us" if normalized_mobile else ""
+    recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
+
+    return {
+        "sales_order": doc.name,
+        "customer": doc.customer,
+        "customer_name": doc.customer_name,
+        "contact_name": contact_name,
+        "contact_person": contact_person,
+        "mobile_raw": mobile,
+        "mobile_normalized": normalized_mobile,
+        "chat_id": chat_id,
+        "recipient_name": recipient_name,
+    }
+
+
 def send_sales_order_pdf(doc, method=None):
     try:
         _send_sales_order_pdf(doc, method=method)
