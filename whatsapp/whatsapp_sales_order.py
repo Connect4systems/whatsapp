@@ -90,6 +90,44 @@ def send_payment_entry_message_now(name):
     return "OK"
 
 
+@frappe.whitelist()
+def send_whatsapp_ping_now(mobile=None, chat_id=None, text=None):
+    """Send a plain text WhatsApp message for delivery diagnostics."""
+    token, instance_id = _get_wapilot_settings("WhatsApp Ping")
+    if not token:
+        frappe.throw("wapilot_token missing in site_config.json")
+
+    resolved_chat_id = (chat_id or "").strip()
+    if not resolved_chat_id:
+        normalized_mobile = clean_egypt_mobile(mobile)
+        if not normalized_mobile:
+            frappe.throw("Provide either chat_id or mobile")
+        resolved_chat_id = f"{normalized_mobile}@c.us"
+
+    ping_text = (text or "WhatsApp connectivity test from ERPNext").strip()
+    if not ping_text:
+        ping_text = "WhatsApp connectivity test from ERPNext"
+
+    response = _send_message(resolved_chat_id, ping_text, instance_id, token)
+
+    log_body = (
+        f"Status: {response.status_code}\n"
+        f"Response: {response.text}\n"
+        f"Chat ID: {resolved_chat_id}"
+    )
+
+    if response.status_code >= 400:
+        frappe.log_error(log_body, "WhatsApp Ping Failed")
+        frappe.throw(f"WhatsApp ping failed: {response.status_code}")
+
+    frappe.log_error(log_body, "WhatsApp Ping Sent")
+    return {
+        "status_code": response.status_code,
+        "response": response.text,
+        "chat_id": resolved_chat_id,
+    }
+
+
 def send_sales_order_pdf(doc, method=None):
     try:
         _send_sales_order_pdf(doc, method=method)
