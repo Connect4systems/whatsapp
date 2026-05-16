@@ -197,17 +197,18 @@ def debug_sales_order_recipient(name):
         frappe.throw("Sales Order name is required")
 
     doc = frappe.get_doc("Sales Order", name)
-    contact_name, contact_person, mobile = get_customer_contact(doc.customer)
+    contact_name, recipient_name, mobile = _get_sales_order_recipient(doc)
     normalized_mobile = clean_egypt_mobile(mobile)
     chat_id = f"{normalized_mobile}@c.us" if normalized_mobile else ""
-    recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
 
     return {
         "sales_order": doc.name,
         "customer": doc.customer,
         "customer_name": doc.customer_name,
+        "document_contact_person": getattr(doc, "contact_person", None),
+        "document_contact_mobile": getattr(doc, "contact_mobile", None),
+        "document_contact_phone": getattr(doc, "contact_phone", None),
         "contact_name": contact_name,
-        "contact_person": contact_person,
         "mobile_raw": mobile,
         "mobile_normalized": normalized_mobile,
         "chat_id": chat_id,
@@ -275,7 +276,7 @@ def _get_sales_order_recipient(doc):
         doc.customer,
         preferred_contact_name=getattr(doc, "contact_person", None),
     )
-    mobile = getattr(doc, "contact_mobile", None) or getattr(doc, "contact_phone", None) or mobile
+    mobile = mobile or getattr(doc, "contact_mobile", None) or getattr(doc, "contact_phone", None)
     recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
 
     return contact_name, recipient_name, mobile
