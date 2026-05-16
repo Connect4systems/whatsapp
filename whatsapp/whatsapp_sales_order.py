@@ -35,7 +35,16 @@ def clean_egypt_mobile(mobile):
     return mobile
 
 
-def get_customer_contact(customer):
+def get_customer_contact(customer, preferred_contact_name=None):
+    if preferred_contact_name:
+        preferred_exists = frappe.db.exists("Contact", preferred_contact_name)
+        if preferred_exists:
+            contact = frappe.get_doc("Contact", preferred_contact_name)
+            mobile = contact.mobile_no or contact.phone or ""
+            contact_person = contact.first_name or contact.full_name or ""
+            if mobile:
+                return preferred_contact_name, contact_person, mobile
+
     customer_primary_contact = frappe.db.get_value("Customer", customer, "customer_primary_contact")
     contact_name = customer_primary_contact
 
@@ -83,7 +92,7 @@ def get_recipient_name(contact_person, customer_name, customer_code):
             return text
 
     # If only email-like values exist, keep a neutral fallback.
-    return "عميلنا الكريم"
+    return "\u0639\u0645\u064a\u0644\u0646\u0627 \u0627\u0644\u0643\u0631\u064a\u0645"
 
 
 def get_default_print_format(doctype):
@@ -245,7 +254,10 @@ def _send_sales_order_pdf(doc, method=None):
     if not token:
         return
 
-    contact_name, contact_person, mobile = get_customer_contact(doc.customer)
+    contact_name, contact_person, mobile = get_customer_contact(
+        doc.customer,
+        preferred_contact_name=getattr(doc, "contact_person", None),
+    )
 
     if not mobile:
         frappe.log_error(f"No mobile found for customer {doc.customer}", "WhatsApp Sales Order PDF")
@@ -257,11 +269,11 @@ def _send_sales_order_pdf(doc, method=None):
     recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
 
     caption = (
-        f"Ø§Ù„Ø³ÙŠØ¯ {recipient_name}\n\n"
-        f"Ù†Ø´ÙƒØ±ÙƒÙ… Ø¹Ù„Ù‰ Ø·Ù„Ø¨ÙƒÙ… Ù…Ù†ØªØ¬Ø§ØªÙ†Ø§ Ø¨ØªØ§Ø±ÙŠØ® {formatdate(doc.transaction_date, 'dd-MM-yyyy')}.\n\n"
-        f"Ø±Ù‚Ù… Ø£Ù…Ø± Ø§Ù„Ø¨ÙŠØ¹: {doc.name}\n\n"
-        f"Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø·Ù„Ø¨: {doc.grand_total} {doc.currency}\n\n"
-        f"Ù…Ø¹ Ø®Ø§Ù„Øµ Ø§Ù„ØªØ­ÙŠØ©\n"
+        f"\u0627\u0644\u0633\u064a\u062f {recipient_name}\n\n"
+        f"\u0646\u0634\u0643\u0631\u0643\u0645 \u0639\u0644\u0649 \u0637\u0644\u0628\u0643\u0645 \u0645\u0646\u062a\u062c\u0627\u062a\u0646\u0627 \u0628\u062a\u0627\u0631\u064a\u062e {formatdate(doc.transaction_date, 'dd-MM-yyyy')}.\n\n"
+        f"\u0631\u0642\u0645 \u0623\u0645\u0631 \u0627\u0644\u0628\u064a\u0639: {doc.name}\n\n"
+        f"\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0637\u0644\u0628: {doc.grand_total} {doc.currency}\n\n"
+        f"\u0645\u0639 \u062e\u0627\u0644\u0635 \u0627\u0644\u062a\u062d\u064a\u0629\n"
         f"PIT Tools"
     )
 
@@ -296,7 +308,10 @@ def _send_sales_invoice_pdf(doc, method=None):
     if not token:
         return
 
-    contact_name, contact_person, mobile = get_customer_contact(doc.customer)
+    contact_name, contact_person, mobile = get_customer_contact(
+        doc.customer,
+        preferred_contact_name=getattr(doc, "contact_person", None),
+    )
 
     if not mobile:
         frappe.log_error(f"No mobile found for customer {doc.customer}", "WhatsApp Sales Invoice PDF")
@@ -308,11 +323,11 @@ def _send_sales_invoice_pdf(doc, method=None):
     recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
 
     caption = (
-        f"Ø§Ù„Ø³ÙŠØ¯ {recipient_name}\n\n"
-        f"ØªÙ… Ø¥ØµØ¯Ø§Ø± ÙØ§ØªÙˆØ±Ø© Ù…Ø¨ÙŠØ¹Ø§Øª Ø¨ØªØ§Ø±ÙŠØ® {formatdate(doc.posting_date, 'dd-MM-yyyy')}.\n\n"
-        f"Ø±Ù‚Ù… Ø§Ù„ÙØ§ØªÙˆØ±Ø©: {doc.name}\n\n"
-        f"Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ÙØ§ØªÙˆØ±Ø©: {doc.grand_total} {doc.currency}\n\n"
-        f"Ù…Ø¹ Ø®Ø§Ù„Øµ Ø§Ù„ØªØ­ÙŠØ©\n"
+        f"\u0627\u0644\u0633\u064a\u062f {recipient_name}\n\n"
+        f"\u062a\u0645 \u0625\u0635\u062f\u0627\u0631 \u0641\u0627\u062a\u0648\u0631\u0629 \u0645\u0628\u064a\u0639\u0627\u062a \u0628\u062a\u0627\u0631\u064a\u062e {formatdate(doc.posting_date, 'dd-MM-yyyy')}.\n\n"
+        f"\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629: {doc.name}\n\n"
+        f"\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629: {doc.grand_total} {doc.currency}\n\n"
+        f"\u0645\u0639 \u062e\u0627\u0644\u0635 \u0627\u0644\u062a\u062d\u064a\u0629\n"
         f"PIT Tools"
     )
 
@@ -372,11 +387,11 @@ def _send_payment_entry_message(doc, method=None):
     chat_id = f"{whatsapp_no}@c.us"
 
     text = (
-        f"Ø§Ù„Ø³ÙŠØ¯ / {recipient_name}\n\n"
-        f"Ù†Ø´ÙƒØ±ÙƒÙ… Ø¹Ù„Ù‰ Ø³Ø¯Ø§Ø¯ Ù…Ø¨Ù„Øº {paid_amount} {doc.paid_from_account_currency or doc.paid_to_account_currency} "
-        f"Ø¨ØªØ§Ø±ÙŠØ® {formatdate(doc.posting_date, 'dd-MM-yyyy')}.\n\n"
-        f"ÙŠØ±Ø¬Ù‰ Ø§Ù„Ø¹Ù„Ù… Ø£Ù† Ø§Ù„Ø±ØµÙŠØ¯ Ø§Ù„Ù…ØªØ¨Ù‚ÙŠ Ø¹Ù„ÙŠÙƒÙ… Ø­ØªÙ‰ ØªØ§Ø±ÙŠØ®Ù‡ Ù‡Ùˆ {balance} {doc.paid_from_account_currency or doc.paid_to_account_currency}.\n\n"
-        f"Ù…Ø¹ Ø®Ø§Ù„Øµ Ø§Ù„ØªØ­ÙŠØ©\n"
+        f"\u0627\u0644\u0633\u064a\u062f / {recipient_name}\n\n"
+        f"\u0646\u0634\u0643\u0631\u0643\u0645 \u0639\u0644\u0649 \u0633\u062f\u0627\u062f \u0645\u0628\u0644\u063a {paid_amount} {doc.paid_from_account_currency or doc.paid_to_account_currency} "
+        f"\u0628\u062a\u0627\u0631\u064a\u062e {formatdate(doc.posting_date, 'dd-MM-yyyy')}.\n\n"
+        f"\u064a\u0631\u062c\u0649 \u0627\u0644\u0639\u0644\u0645 \u0623\u0646 \u0627\u0644\u0631\u0635\u064a\u062f \u0627\u0644\u0645\u062a\u0628\u0642\u064a \u0639\u0644\u064a\u0643\u0645 \u062d\u062a\u0649 \u062a\u0627\u0631\u064a\u062e\u0647 \u0647\u0648 {balance} {doc.paid_from_account_currency or doc.paid_to_account_currency}.\n\n"
+        f"\u0645\u0639 \u062e\u0627\u0644\u0635 \u0627\u0644\u062a\u062d\u064a\u0629\n"
         f"PIT Tools"
     )
 
