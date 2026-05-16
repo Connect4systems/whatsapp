@@ -123,6 +123,16 @@ def send_sales_order_pdf_now(name):
 
 
 @frappe.whitelist()
+def send_sales_order_text_now(name):
+    if not name:
+        frappe.throw("Sales Order name is required")
+
+    doc = frappe.get_doc("Sales Order", name)
+    _send_sales_order_text(doc)
+    return "OK"
+
+
+@frappe.whitelist()
 def send_sales_invoice_pdf_now(name):
     if not name:
         frappe.throw("Sales Invoice name is required")
@@ -260,6 +270,66 @@ def _send_message(chat_id, text, instance_id, token):
     return response
 
 
+def _get_sales_order_recipient(doc):
+    contact_name, contact_person, mobile = get_customer_contact(
+        doc.customer,
+        preferred_contact_name=getattr(doc, "contact_person", None),
+    )
+    mobile = getattr(doc, "contact_mobile", None) or getattr(doc, "contact_phone", None) or mobile
+    recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
+
+    return contact_name, recipient_name, mobile
+
+
+def _get_sales_order_message(doc, recipient_name):
+    amount = get_doc_total_amount(doc)
+    amount_display = format_doc_amount(amount, doc.currency)
+
+    return (
+        f"السيد {recipient_name}\n\n"
+        f"نشكركم على طلبكم منتجاتنا بتاريخ {formatdate(doc.transaction_date, 'dd-MM-yyyy')}.\n\n"
+        f"رقم أمر البيع: {doc.name}\n\n"
+        f"إجمالي الطلب: {amount_display}\n\n"
+        f"مع خالص التحية\n"
+        f"PIT Tools"
+    )
+
+
+def _send_sales_order_text(doc):
+    frappe.log_error(f"Triggered for Sales Order text: {doc.name}", "WhatsApp Sales Order Text Triggered")
+
+    token, instance_id = _get_wapilot_settings("WhatsApp Sales Order Text")
+    if not token:
+        return
+
+    contact_name, recipient_name, mobile = _get_sales_order_recipient(doc)
+
+    if not mobile:
+        frappe.log_error(f"No mobile found for customer {doc.customer}", "WhatsApp Sales Order Text")
+        return
+
+    whatsapp_no = clean_egypt_mobile(mobile)
+    if not whatsapp_no:
+        frappe.log_error(f"Invalid mobile for customer {doc.customer}: {mobile}", "WhatsApp Sales Order Text")
+        return
+
+    chat_id = f"{whatsapp_no}@c.us"
+    text = _get_sales_order_message(doc, recipient_name)
+
+    response = _send_message(chat_id, text, instance_id, token)
+
+    if response.status_code >= 400:
+        frappe.log_error(
+            f"Status: {response.status_code}\nResponse: {response.text}\nChat ID: {chat_id}\nContact: {contact_name}",
+            "WhatsApp Sales Order Text Failed",
+        )
+    else:
+        frappe.log_error(
+            f"Sent successfully\nResponse: {response.text}\nChat ID: {chat_id}\nContact: {contact_name}",
+            "WhatsApp Sales Order Text Sent",
+        )
+
+
 def _send_sales_order_pdf(doc, method=None):
     frappe.log_error(f"Triggered for Sales Order: {doc.name}", "WhatsApp Sales Order PDF Triggered")
 
@@ -267,31 +337,19 @@ def _send_sales_order_pdf(doc, method=None):
     if not token:
         return
 
-    contact_name, contact_person, mobile = get_customer_contact(
-        doc.customer,
-        preferred_contact_name=getattr(doc, "contact_person", None),
-    )
-    mobile = getattr(doc, "contact_mobile", None) or getattr(doc, "contact_phone", None) or mobile
+    contact_name, recipient_name, mobile = _get_sales_order_recipient(doc)
 
     if not mobile:
         frappe.log_error(f"No mobile found for customer {doc.customer}", "WhatsApp Sales Order PDF")
         return
 
     whatsapp_no = clean_egypt_mobile(mobile)
+    if not whatsapp_no:
+        frappe.log_error(f"Invalid mobile for customer {doc.customer}: {mobile}", "WhatsApp Sales Order PDF")
+        return
+
     chat_id = f"{whatsapp_no}@c.us"
-    amount = get_doc_total_amount(doc)
-    amount_display = format_doc_amount(amount, doc.currency)
-
-    recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
-
-    caption = (
-        f"\u0627\u0644\u0633\u064a\u062f {recipient_name}\n\n"
-        f"\u0646\u0634\u0643\u0631\u0643\u0645 \u0639\u0644\u0649 \u0637\u0644\u0628\u0643\u0645 \u0645\u0646\u062a\u062c\u0627\u062a\u0646\u0627 \u0628\u062a\u0627\u0631\u064a\u062e {formatdate(doc.transaction_date, 'dd-MM-yyyy')}.\n\n"
-        f"\u0631\u0642\u0645 \u0623\u0645\u0631 \u0627\u0644\u0628\u064a\u0639: {doc.name}\n\n"
-        f"\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0637\u0644\u0628: {amount_display}\n\n"
-        f"\u0645\u0639 \u062e\u0627\u0644\u0635 \u0627\u0644\u062a\u062d\u064a\u0629\n"
-        f"PIT Tools"
-    )
+    caption = _get_sales_order_message(doc, recipient_name)
 
     html = frappe.get_print(
         doctype="Sales Order",
