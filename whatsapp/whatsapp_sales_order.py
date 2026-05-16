@@ -56,6 +56,18 @@ def get_customer_contact(customer):
     return contact_name, contact_person, mobile
 
 
+def get_recipient_name(contact_person, customer_name, customer_code):
+    """Return the best human-readable recipient name, avoiding email-like fallbacks."""
+    candidates = [contact_person, customer_name, customer_code]
+    for value in candidates:
+        text = (value or "").strip()
+        if text and "@" not in text:
+            return text
+
+    # If only email-like values exist, keep a neutral fallback.
+    return "عميلنا الكريم"
+
+
 def get_default_print_format(doctype):
     return frappe.get_meta(doctype).default_print_format or "Standard"
 
@@ -199,8 +211,10 @@ def _send_sales_order_pdf(doc, method=None):
     whatsapp_no = clean_egypt_mobile(mobile)
     chat_id = f"{whatsapp_no}@c.us"
 
+    recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
+
     caption = (
-        f"Ø§Ù„Ø³ÙŠØ¯ {contact_person or doc.customer_name or doc.customer}\n\n"
+        f"Ø§Ù„Ø³ÙŠØ¯ {recipient_name}\n\n"
         f"Ù†Ø´ÙƒØ±ÙƒÙ… Ø¹Ù„Ù‰ Ø·Ù„Ø¨ÙƒÙ… Ù…Ù†ØªØ¬Ø§ØªÙ†Ø§ Ø¨ØªØ§Ø±ÙŠØ® {formatdate(doc.transaction_date, 'dd-MM-yyyy')}.\n\n"
         f"Ø±Ù‚Ù… Ø£Ù…Ø± Ø§Ù„Ø¨ÙŠØ¹: {doc.name}\n\n"
         f"Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø·Ù„Ø¨: {doc.grand_total} {doc.currency}\n\n"
@@ -248,8 +262,10 @@ def _send_sales_invoice_pdf(doc, method=None):
     whatsapp_no = clean_egypt_mobile(mobile)
     chat_id = f"{whatsapp_no}@c.us"
 
+    recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
+
     caption = (
-        f"Ø§Ù„Ø³ÙŠØ¯ {contact_person or doc.customer_name or doc.customer}\n\n"
+        f"Ø§Ù„Ø³ÙŠØ¯ {recipient_name}\n\n"
         f"ØªÙ… Ø¥ØµØ¯Ø§Ø± ÙØ§ØªÙˆØ±Ø© Ù…Ø¨ÙŠØ¹Ø§Øª Ø¨ØªØ§Ø±ÙŠØ® {formatdate(doc.posting_date, 'dd-MM-yyyy')}.\n\n"
         f"Ø±Ù‚Ù… Ø§Ù„ÙØ§ØªÙˆØ±Ø©: {doc.name}\n\n"
         f"Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ÙØ§ØªÙˆØ±Ø©: {doc.grand_total} {doc.currency}\n\n"
@@ -300,6 +316,7 @@ def _send_payment_entry_message(doc, method=None):
     from erpnext.accounts.utils import get_balance_on
 
     customer_name = frappe.db.get_value("Customer", doc.party, "customer_name") or doc.party
+    recipient_name = get_recipient_name(contact_person, customer_name, doc.party)
     paid_amount = doc.paid_amount or doc.received_amount or 0
     balance = get_balance_on(
         party_type="Customer",
@@ -312,7 +329,7 @@ def _send_payment_entry_message(doc, method=None):
     chat_id = f"{whatsapp_no}@c.us"
 
     text = (
-        f"Ø§Ù„Ø³ÙŠØ¯ / {contact_person or customer_name or doc.party}\n\n"
+        f"Ø§Ù„Ø³ÙŠØ¯ / {recipient_name}\n\n"
         f"Ù†Ø´ÙƒØ±ÙƒÙ… Ø¹Ù„Ù‰ Ø³Ø¯Ø§Ø¯ Ù…Ø¨Ù„Øº {paid_amount} {doc.paid_from_account_currency or doc.paid_to_account_currency} "
         f"Ø¨ØªØ§Ø±ÙŠØ® {formatdate(doc.posting_date, 'dd-MM-yyyy')}.\n\n"
         f"ÙŠØ±Ø¬Ù‰ Ø§Ù„Ø¹Ù„Ù… Ø£Ù† Ø§Ù„Ø±ØµÙŠØ¯ Ø§Ù„Ù…ØªØ¨Ù‚ÙŠ Ø¹Ù„ÙŠÙƒÙ… Ø­ØªÙ‰ ØªØ§Ø±ÙŠØ®Ù‡ Ù‡Ùˆ {balance} {doc.paid_from_account_currency or doc.paid_to_account_currency}.\n\n"
