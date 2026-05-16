@@ -1,19 +1,38 @@
 import frappe
 import requests
+import re
 from frappe.utils import formatdate
 from frappe.utils.pdf import get_pdf
 
 
 def clean_egypt_mobile(mobile):
-    mobile = (mobile or "").replace("+", "").replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    mobile = (mobile or "").strip()
+    if not mobile:
+        return ""
 
+    # Keep explicit international format as-is, but without symbols.
+    had_plus_prefix = mobile.startswith("+")
+    mobile = re.sub(r"\D", "", mobile)
+
+    if not mobile:
+        return ""
+
+    if had_plus_prefix:
+        return mobile
+
+    # Convert 00-prefixed international format to plain country-code format.
+    if mobile.startswith("00"):
+        return mobile[2:]
+
+    # Keep Egypt local format compatibility (e.g. 010xxxxxxx -> 2010xxxxxxx).
     if mobile.startswith("20"):
         return mobile
 
     if mobile.startswith("0"):
-        return "2" + mobile
+        return "20" + mobile[1:]
 
-    return "20" + mobile
+    # Assume already in country-code format if it does not start with 0.
+    return mobile
 
 
 def get_customer_contact(customer):
