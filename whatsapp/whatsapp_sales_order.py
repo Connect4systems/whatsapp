@@ -36,15 +36,33 @@ def clean_egypt_mobile(mobile):
 
 
 def get_customer_contact(customer):
-    contact_name = frappe.db.get_value(
-        "Dynamic Link",
-        {
-            "link_doctype": "Customer",
-            "link_name": customer,
-            "parenttype": "Contact",
-        },
-        "parent",
-    )
+    customer_primary_contact = frappe.db.get_value("Customer", customer, "customer_primary_contact")
+    contact_name = customer_primary_contact
+
+    if not contact_name:
+        links = frappe.get_all(
+            "Dynamic Link",
+            filters={
+                "link_doctype": "Customer",
+                "link_name": customer,
+                "parenttype": "Contact",
+            },
+            fields=["parent"],
+            order_by="creation asc",
+            limit=20,
+        )
+
+        for link in links:
+            candidate_name = link.parent
+            if not candidate_name:
+                continue
+            candidate = frappe.get_doc("Contact", candidate_name)
+            if candidate.mobile_no or candidate.phone:
+                contact_name = candidate_name
+                break
+
+        if not contact_name and links:
+            contact_name = links[0].parent
 
     if not contact_name:
         return None, None, None
