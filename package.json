@@ -1,0 +1,7 @@
+{
+  "name": "whatsapp",
+  "version": "0.0.1",
+  "private": true,
+  "description": "WhatsApp automation app for Frappe and ERPNext",
+  "license": "MIT"
+}

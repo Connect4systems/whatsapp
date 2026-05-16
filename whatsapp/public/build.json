@@ -1,0 +1,8 @@
+{
+  "js/website_whatsapp.js": [
+    "public/js/website_whatsapp.js"
+  ],
+  "css/whatsapp.css": [
+    "public/css/whatsapp.css"
+  ]
+}
