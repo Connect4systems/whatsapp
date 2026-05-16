@@ -1,0 +1,50 @@
+.wa-float {
+  position: fixed;
+  inset-inline-end: 18px;
+  bottom: 18px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #20c45a 0%, #0d9f45 100%);
+  border: 0;
+  box-shadow: 0 12px 24px rgba(13, 159, 69, 0.35);
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-decoration: none;
+  z-index: 180;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.wa-float:hover {
+  color: #fff;
+  text-decoration: none;
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 16px 30px rgba(13, 159, 69, 0.4);
+}
+
+.wa-float img {
+  width: 31px;
+  height: 31px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+@media (max-width: 640px) {
+  .wa-float {
+    width: 54px;
+    height: 54px;
+    inset-inline-end: 14px;
+    bottom: 14px;
+  }
+
+  .wa-float img {
+    width: 29px;
+    height: 29px;
+  }
+}

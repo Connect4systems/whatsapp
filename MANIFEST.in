@@ -1,0 +1,4 @@
+include requirements.txt
+include *.md
+recursive-include whatsapp *.css *.html *.js *.json *.md *.png *.svg *.txt *.xml
+recursive-exclude whatsapp *.pyc
