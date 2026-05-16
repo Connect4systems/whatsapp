@@ -1,7 +1,9 @@
 import frappe
 import requests
 import re
+from frappe.utils import flt
 from frappe.utils import formatdate
+from frappe.utils import fmt_money
 from frappe.utils.pdf import get_pdf
 
 
@@ -97,6 +99,17 @@ def get_recipient_name(contact_person, customer_name, customer_code):
 
 def get_default_print_format(doctype):
     return frappe.get_meta(doctype).default_print_format or "Standard"
+
+
+def get_doc_total_amount(doc):
+    rounded = flt(getattr(doc, "rounded_total", 0))
+    if rounded:
+        return rounded
+    return flt(getattr(doc, "grand_total", 0))
+
+
+def format_doc_amount(amount, currency):
+    return fmt_money(amount, currency=currency)
 
 
 @frappe.whitelist()
@@ -258,6 +271,7 @@ def _send_sales_order_pdf(doc, method=None):
         doc.customer,
         preferred_contact_name=getattr(doc, "contact_person", None),
     )
+    mobile = getattr(doc, "contact_mobile", None) or getattr(doc, "contact_phone", None) or mobile
 
     if not mobile:
         frappe.log_error(f"No mobile found for customer {doc.customer}", "WhatsApp Sales Order PDF")
@@ -265,6 +279,8 @@ def _send_sales_order_pdf(doc, method=None):
 
     whatsapp_no = clean_egypt_mobile(mobile)
     chat_id = f"{whatsapp_no}@c.us"
+    amount = get_doc_total_amount(doc)
+    amount_display = format_doc_amount(amount, doc.currency)
 
     recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
 
@@ -272,7 +288,7 @@ def _send_sales_order_pdf(doc, method=None):
         f"\u0627\u0644\u0633\u064a\u062f {recipient_name}\n\n"
         f"\u0646\u0634\u0643\u0631\u0643\u0645 \u0639\u0644\u0649 \u0637\u0644\u0628\u0643\u0645 \u0645\u0646\u062a\u062c\u0627\u062a\u0646\u0627 \u0628\u062a\u0627\u0631\u064a\u062e {formatdate(doc.transaction_date, 'dd-MM-yyyy')}.\n\n"
         f"\u0631\u0642\u0645 \u0623\u0645\u0631 \u0627\u0644\u0628\u064a\u0639: {doc.name}\n\n"
-        f"\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0637\u0644\u0628: {doc.grand_total} {doc.currency}\n\n"
+        f"\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0637\u0644\u0628: {amount_display}\n\n"
         f"\u0645\u0639 \u062e\u0627\u0644\u0635 \u0627\u0644\u062a\u062d\u064a\u0629\n"
         f"PIT Tools"
     )
@@ -312,6 +328,7 @@ def _send_sales_invoice_pdf(doc, method=None):
         doc.customer,
         preferred_contact_name=getattr(doc, "contact_person", None),
     )
+    mobile = getattr(doc, "contact_mobile", None) or getattr(doc, "contact_phone", None) or mobile
 
     if not mobile:
         frappe.log_error(f"No mobile found for customer {doc.customer}", "WhatsApp Sales Invoice PDF")
@@ -319,6 +336,8 @@ def _send_sales_invoice_pdf(doc, method=None):
 
     whatsapp_no = clean_egypt_mobile(mobile)
     chat_id = f"{whatsapp_no}@c.us"
+    amount = get_doc_total_amount(doc)
+    amount_display = format_doc_amount(amount, doc.currency)
 
     recipient_name = get_recipient_name(contact_person, doc.customer_name, doc.customer)
 
@@ -326,7 +345,7 @@ def _send_sales_invoice_pdf(doc, method=None):
         f"\u0627\u0644\u0633\u064a\u062f {recipient_name}\n\n"
         f"\u062a\u0645 \u0625\u0635\u062f\u0627\u0631 \u0641\u0627\u062a\u0648\u0631\u0629 \u0645\u0628\u064a\u0639\u0627\u062a \u0628\u062a\u0627\u0631\u064a\u062e {formatdate(doc.posting_date, 'dd-MM-yyyy')}.\n\n"
         f"\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629: {doc.name}\n\n"
-        f"\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629: {doc.grand_total} {doc.currency}\n\n"
+        f"\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629: {amount_display}\n\n"
         f"\u0645\u0639 \u062e\u0627\u0644\u0635 \u0627\u0644\u062a\u062d\u064a\u0629\n"
         f"PIT Tools"
     )
