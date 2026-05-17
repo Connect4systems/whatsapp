@@ -4,7 +4,6 @@ WhatsApp automation app for Frappe and ERPNext v15.
 
 ## Features
 
-- Sends Sales Order PDFs to the customer's WhatsApp number on submit.
 - Sends Sales Invoice PDFs to the customer's WhatsApp number on submit.
 - Sends Payment Entry confirmation messages to the customer's WhatsApp number on submit.
 - Uses customer Contact mobile/phone values and normalizes Egyptian mobile numbers.

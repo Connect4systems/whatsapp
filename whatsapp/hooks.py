@@ -11,9 +11,6 @@ web_include_css = ["/assets/whatsapp/css/whatsapp.css"]
 web_include_js = ["/assets/whatsapp/js/website_whatsapp.js"]
 
 doc_events = {
-    "Sales Order": {
-        "on_submit": "whatsapp.whatsapp_sales_order.send_sales_order_pdf",
-    },
     "Sales Invoice": {
         "on_submit": "whatsapp.whatsapp_sales_order.send_sales_invoice_pdf",
     },
